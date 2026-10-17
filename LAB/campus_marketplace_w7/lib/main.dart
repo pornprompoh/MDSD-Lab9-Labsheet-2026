@@ -1,25 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-// นำเข้าไฟล์ที่จำเป็น
 import 'database/app_database.dart';
 import 'models/cart_model.dart';
-import 'repositories/item_repository_api.dart';
 import 'repositories/favorites_repository_drift.dart';
+import 'repositories/item_repository_api.dart';
+import 'repositories/item_repository_firestore.dart';
 import 'repositories/listing_draft_repository_drift.dart';
-import 'screens/main_scaffold.dart';
+import 'screens/auth_gate.dart';
 
-void main() {
-  // จำเป็นต้องมีเพื่อให้ path_provider ทำงานได้ถูกต้องก่อน runApp
+Future<void> main() async {
+  // จำเป็นสำหรับการเรียก Native Code ก่อน runApp
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. สร้างฐานข้อมูล 1 ตัว (Singleton-like)
+  // โหลดการตั้งค่า Firebase จากไฟล์ที่ FlutterFire สร้างให้
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
   final db = AppDatabase();
 
   runApp(
     ChangeNotifierProvider(
       create: (context) => CartModel(),
-      // 2. ส่ง db เข้าไปใน MyApp
       child: MyApp(db: db),
     ),
   );
@@ -28,7 +31,6 @@ void main() {
 class MyApp extends StatelessWidget {
   final AppDatabase db;
 
-  // รับค่า db มาทาง Constructor
   const MyApp({super.key, required this.db});
 
   @override
@@ -40,9 +42,8 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      // 3. ส่งข้อมูลต่อไปยัง MainScaffold
-      home: MainScaffold(
-        itemRepository: ItemRepositoryApi(),
+      home: AuthGate(
+        itemRepositories: [ItemRepositoryApi(), ItemRepositoryFirestore()],
         favoritesRepository: FavoritesRepositoryDrift(db),
         draftRepository: ListingDraftRepositoryDrift(db),
       ),

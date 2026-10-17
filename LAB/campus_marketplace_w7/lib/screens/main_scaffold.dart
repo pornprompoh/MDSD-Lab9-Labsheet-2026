@@ -7,13 +7,13 @@ import 'sell_item_page.dart';
 import 'favorites_page.dart';
 
 class MainScaffold extends StatefulWidget {
-  final ItemRepository itemRepository;
+  final List<ItemRepository> itemRepositories;
   final FavoritesRepository favoritesRepository;
   final ListingDraftRepository draftRepository;
 
   const MainScaffold({
     super.key,
-    required this.itemRepository,
+    required this.itemRepositories,
     required this.favoritesRepository,
     required this.draftRepository,
   });
@@ -27,18 +27,18 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    // อัปเดต List ของหน้าจอให้มี 3 หน้า
-    final pages = [
-      HomePage(
-        repository: widget.itemRepository,
-        favoritesRepository: widget.favoritesRepository,
-      ),
-      SellItemPage(draftRepository: widget.draftRepository),
-      FavoritesPage(repository: widget.favoritesRepository),
-    ];
-
     return Scaffold(
-      body: pages[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          HomePage(
+            repositories: widget.itemRepositories,
+            favoritesRepository: widget.favoritesRepository,
+          ),
+          SellItemPage(draftRepository: widget.draftRepository),
+          FavoritesPage(repository: widget.favoritesRepository),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
@@ -47,9 +47,18 @@ class _MainScaffoldState extends State<MainScaffold> {
           });
         },
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.storefront), label: 'หน้าหลัก'),
-          BottomNavigationBarItem(icon: Icon(Icons.add_a_photo), label: 'ลงประกาศขาย'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'รายการโปรด'), // Tab ที่ 3
+          BottomNavigationBarItem(
+            icon: Icon(Icons.storefront),
+            label: 'หน้าหลัก',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.add_a_photo),
+            label: 'ลงประกาศขาย',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.favorite),
+            label: 'รายการโปรด',
+          ), // Tab ที่ 3
         ],
       ),
     );

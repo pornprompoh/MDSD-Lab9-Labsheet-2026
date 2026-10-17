@@ -4,13 +4,18 @@ import 'package:provider/provider.dart';
 import '../models/item.dart';
 import '../models/cart_model.dart';
 import '../repositories/item_repository.dart';
+import '../services/auth_service.dart';
 import '../services/gemini_service.dart';
 import 'checkout_page.dart';
 
 class HomePage extends StatefulWidget {
-  final ItemRepository repository;
+  final List<ItemRepository> repositories;
   final FavoritesRepository favoritesRepository;
-  const HomePage({super.key, required this.repository, required this.favoritesRepository});
+  const HomePage({
+    super.key,
+    required this.repositories,
+    required this.favoritesRepository,
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -22,7 +27,14 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _itemsFuture = widget.repository.getItems();
+    _itemsFuture = _loadItems();
+  }
+
+  Future<List<Item>> _loadItems() async {
+    final itemsByRepository = await Future.wait(
+      widget.repositories.map((repository) => repository.getItems()),
+    );
+    return itemsByRepository.expand((items) => items).toList();
   }
 
   @override
@@ -38,12 +50,14 @@ class _HomePageState extends State<HomePage> {
                 const SnackBar(content: Text('กำลังคุยกับ Gemini...')),
               );
               try {
-                final response = await GeminiService().generateText('ช่วยแต่งประโยคทักทายลูกค้าร้านค้าออนไลน์แบบเป็นกันเอง 1 ประโยค');
+                final response = await GeminiService().generateText(
+                  'ช่วยแต่งประโยคทักทายลูกค้าร้านค้าออนไลน์แบบเป็นกันเอง 1 ประโยค',
+                );
                 debugPrint('Gemini: $response');
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(response)),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(response)));
                 }
               } catch (e) {
                 debugPrint('Error: $e');
@@ -64,6 +78,20 @@ class _HomePageState extends State<HomePage> {
               context,
               MaterialPageRoute(builder: (_) => const CheckoutPage()),
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'ออกจากระบบ',
+            onPressed: () async {
+              try {
+                await AuthService().signOut();
+              } catch (e) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('ออกจากระบบไม่สำเร็จ: $e')),
+                );
+              }
+            },
           ),
         ],
       ),
@@ -93,7 +121,25 @@ class _HomePageState extends State<HomePage> {
                   errorBuilder: (context, error, stackTrace) =>
                       const Icon(Icons.broken_image),
                 ),
-                title: Text(item.title),
+                title: Row(
+                  children: [
+                    Expanded(child: Text(item.title)),
+                    const SizedBox(width: 8),
+                    Tooltip(
+                      message: item.sellerId != null
+                          ? 'สินค้าจาก Firestore'
+                          : 'สินค้าจาก API',
+                      child: Icon(
+                        item.sellerId != null
+                            ? Icons.school
+                            : Icons.storefront,
+                        color: item.sellerId != null
+                            ? Colors.orange
+                            : Colors.blue,
+                      ),
+                    ),
+                  ],
+                ),
                 subtitle: Text('${item.price} บาท'),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -105,8 +151,19 @@ class _HomePageState extends State<HomePage> {
                       ),
                       onPressed: () async {
                         try {
+                          final itemId = item.id;
+                          if (itemId is! int) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'ยังไม่รองรับการบันทึกรายการ Firestore ในรายการโปรด',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
                           await widget.favoritesRepository.addFavorite(
-                            item.id,
+                            itemId,
                             item.title,
                             item.price,
                             item.imageUrl,
@@ -133,9 +190,7 @@ class _HomePageState extends State<HomePage> {
                         context.read<CartModel>().add(item);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(
-                              'เพิ่ม "${item.title}" ลงตะกร้าแล้ว',
-                            ),
+                            content: Text('เพิ่ม "${item.title}" ลงตะกร้าแล้ว'),
                           ),
                         );
                       },

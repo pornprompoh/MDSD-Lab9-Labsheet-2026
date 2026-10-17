@@ -8,8 +8,8 @@
 //    ให้ widget หา เกิด ProviderNotFoundException ทันที ในเทสนี้จึงต้องครอบ
 //    ChangeNotifierProvider ให้เองตรงนี้ด้วย
 //
-// 2) MyApp เปิดหน้าแรกด้วย HomePage(repository: ItemRepositoryApi()) ซึ่งเรียก
-//    เครือข่ายจริงใน initState() แต่ Flutter จะดักจับ HttpClient ทุกตัวระหว่างรัน
+// 2) HomePage โหลดสินค้าจาก repositories ใน initState() ซึ่งอาจเรียกเครือข่ายจริง
+//    แต่ Flutter จะดักจับ HttpClient ทุกตัวระหว่างรัน
 //    widget test แล้วตอบกลับสถานะ 400 เสมอ (ไม่เรียกเครือข่ายจริง) ทำให้ได้ Exception
 //    "สถานะ 400" ทุกครั้งโดยไม่เกี่ยวกับ API จริงเลย เทสนี้จึงใช้ repository ปลอม
 //    (_FakeItemRepository) ที่ไม่เรียกเครือข่ายแทน เพื่อตรวจสถานะ "กำลังโหลด" ได้แน่นอน
@@ -66,7 +66,7 @@ void main() {
         child: MaterialApp(
           title: 'Campus Marketplace',
           home: HomePage(
-            repository: _FakeItemRepository(),
+            repositories: [_FakeItemRepository()],
             favoritesRepository: _FakeFavoritesRepository(),
           ),
         ),
